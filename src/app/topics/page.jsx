@@ -34,7 +34,7 @@ export default function TopicsPage() {
 
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) {
-            router.push('/login')
+            router.push('/')
             return
         }
         setUser(session.user)

@@ -3,11 +3,13 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/utils/supabase'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // CHANGE THIS: 10 for testing, 900 (15 mins) for the real event!
 const START_TIME = 900;
 
 export default function LiveViewPage() {
+    const router = useRouter()
     const [presenters, setPresenters] = useState([])
     const [activePresenter, setActivePresenter] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -55,6 +57,11 @@ export default function LiveViewPage() {
     useEffect(() => {
         const initData = async () => {
             const { data: { session } } = await supabase.auth.getSession()
+
+            if (!session) {
+                window.location.href = '/' // Kick them to the home page
+                return
+            }
             const currentUser = session?.user || null
             setUser(currentUser)
 
@@ -319,9 +326,11 @@ export default function LiveViewPage() {
                                         </div>
 
                                         {p.has_presented && (
-                                            <div className="bg-[#8E9D7B] text-[#1A1E16] font-black text-[8px] md:text-[10px] px-2 md:px-3 py-1 md:py-1.5 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1 md:gap-1.5 relative">
-                                                <span>⭐</span>
+                                            <div className="bg-[#8E9D7B] text-[#1A1E16] font-black text-[8px] md:text-[10px] px-2 md:px-3 py-1 md:py-1.5 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1 md:gap-1.5 relative animate-fade-in transition-all duration-300">
+                                                <span className="text-[10px] md:text-xs shadow-[0_0_10px_rgba(255,255,255,0.7)]">⭐</span>
                                                 <span>Presented!</span>
+                                                {/* The restored glowing pulse effect */}
+                                                <span className="absolute inset-0 rounded-full animate-pulse-slow bg-white/10 opacity-70"></span>
                                             </div>
                                         )}
                                     </div>

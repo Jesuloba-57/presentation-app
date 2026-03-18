@@ -1,190 +1,221 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/utils/supabase'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-export default function HomePage() {
-  const [user, setUser] = useState(null)
-  const [myTopic, setMyTopic] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [isMounted, setIsMounted] = useState(false)
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, isLive: false })
+export default function LandingPage() {
   const router = useRouter()
+  const [session, setSession] = useState(null)
 
-  // --- COUNTDOWN LOGIC ---
+  // Auth Form State
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [authMessage, setAuthMessage] = useState(null)
+
+  // Check if they are already logged in when the page loads
   useEffect(() => {
-    // Target date: March 21, 2026 at 7:00 PM
-    const targetDate = new Date('2026-03-21T19:00:00').getTime()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
 
-    const timer = setInterval(() => {
-      const now = new Date().getTime()
-      const distance = targetDate - now
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
 
-      if (distance < 0) {
-        clearInterval(timer)
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isLive: true })
-      } else {
-        setTimeLeft({
-          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-          seconds: Math.floor((distance % (1000 * 60)) / 1000),
-          isLive: false
-        })
-      }
-    }, 1000)
-
-    return () => clearInterval(timer)
+    return () => subscription.unsubscribe()
   }, [])
 
-  // --- DATA FETCHING LOGIC ---
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+  const handleAuth = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    setAuthMessage(null)
 
-      if (!session) {
-        router.push('/login')
-        return
+    if (isSignUp) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+      if (error) {
+        setError(error.message)
+      } else {
+        setAuthMessage('Success! Check your email to confirm your account.')
       }
-
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', session.user.id)
-        .single()
-
-      if (!profileData || !profileData.display_name) {
-        router.push('/setup-profile')
-        return
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) {
+        setError(error.message)
+      } else {
+        router.push('/') // Triggers the session to update
       }
-
-      setUser({ ...session.user, customName: profileData.display_name })
-
-      const { data: topicData } = await supabase
-        .from('topics')
-        .select('*')
-        .eq('claimed_by', session.user.id)
-        .single()
-
-      if (topicData) {
-        setMyTopic(topicData)
-      }
-
-      setLoading(false)
-      setTimeout(() => setIsMounted(true), 100)
     }
-
-    fetchDashboardData()
-  }, [router])
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-[#F5F3E9] to-[#E2E6D8]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-[#C2CDB4] border-t-[#8E9D7B] rounded-full animate-spin"></div>
-          <p className="text-[#4A533E] text-sm font-medium tracking-widest uppercase">Syncing...</p>
-        </div>
-      </div>
-    )
+    setLoading(false)
   }
 
-  const displayName = user?.customName || 'Presenter'
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#F5F3E9] to-[#E2E6D8] p-6 overflow-hidden">
+    <div className="min-h-screen bg-[#1A1E16] text-[#F5F3E9] font-sans selection:bg-[#8E9D7B] selection:text-[#1A1E16] overflow-hidden flex flex-col md:flex-row">
 
-      <div
-        className={`max-w-md w-full bg-white/70 backdrop-blur-xl rounded-[2.5rem] shadow-lg p-8 text-center border border-white transform transition-all duration-1000 ease-out ${isMounted ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'
-          }`}
-      >
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <h1 className="text-3xl font-extrabold text-[#2D3325] tracking-tight">
-            Welcome, {displayName}
+      {/* LEFT SIDE: The Pitch & Animations */}
+      <div className="flex-1 p-8 md:p-16 flex flex-col justify-center relative">
+        {/* Background glow effects */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-[#8E9D7B]/10 rounded-full blur-[100px] -z-10 animate-pulse-slow"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#C2CDB4]/5 rounded-full blur-[100px] -z-10"></div>
+
+        <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+          <div className="inline-block bg-[#2D3325] border border-[#4A533E] text-[#C2CDB4] font-bold px-4 py-1.5 rounded-full text-xs uppercase tracking-[0.2em] mb-6 shadow-md">
+            The Main Event
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight text-white drop-shadow-md tracking-tight">
+            Presentation <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8E9D7B] to-[#C2CDB4]">
+              Night.
+            </span>
           </h1>
-          <span className="relative flex h-3 w-3 mt-1">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8E9D7B] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#4A533E]"></span>
-          </span>
-        </div>
-
-        {/* COUNTDOWN WIDGET */}
-        <div className="my-6 p-4 bg-white/50 border border-[#C2CDB4] rounded-3xl shadow-sm">
-          {timeLeft.isLive ? (
-            <div className="text-[#8E9D7B] font-black text-xl tracking-widest uppercase animate-pulse">
-              🎤 We are Live!
-            </div>
-          ) : (
-            <div className="flex justify-center gap-3 md:gap-4">
-              {[
-                { label: 'Days', value: timeLeft.days },
-                { label: 'Hours', value: timeLeft.hours },
-                { label: 'Mins', value: timeLeft.minutes },
-                { label: 'Secs', value: timeLeft.seconds }
-              ].map((unit) => (
-                <div key={unit.label} className="flex flex-col items-center w-14 md:w-16">
-                  <div className="w-full bg-[#E2E6D8] text-[#2D3325] font-mono text-xl md:text-2xl font-bold py-2 rounded-xl shadow-inner border border-[#C2CDB4]">
-                    {isMounted ? unit.value.toString().padStart(2, '0') : '00'}
-                  </div>
-                  <span className="text-[#4A533E] text-[9px] md:text-[10px] uppercase font-bold tracking-widest mt-2">
-                    {unit.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* TOPIC SECTION */}
-        {myTopic ? (
-          <div className="mt-4 relative bg-gradient-to-br from-[#E2E6D8] to-[#C2CDB4]/30 border-2 border-dashed border-[#8E9D7B] rounded-[2rem] text-left shadow-sm overflow-hidden group">
-            <div className="absolute -left-4 top-1/2 w-8 h-8 bg-[#F5F3E9] rounded-full transform -translate-y-1/2 border-r-2 border-dashed border-[#8E9D7B]"></div>
-            <div className="absolute -right-4 top-1/2 w-8 h-8 bg-[#F5F3E9] rounded-full transform -translate-y-1/2 border-l-2 border-dashed border-[#8E9D7B]"></div>
-
-            <div className="p-8">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="bg-[#2D3325] text-[#F5F3E9] text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm">
-                  Official Selection
-                </span>
-              </div>
-              <h2 className="text-2xl font-black text-[#2D3325] leading-tight mb-3 group-hover:text-[#4A533E] transition-colors">
-                {myTopic.title}
-              </h2>
-              <p className="text-[#4A533E] text-sm leading-relaxed mb-6 font-medium">
-                {myTopic.description}
-              </p>
-
-              <div className="text-center pt-5 border-t border-[#8E9D7B]/30">
-                <Link href="/topics" className="text-xs font-bold uppercase tracking-wider text-[#4A533E] hover:text-[#2D3325] transition-colors">
-                  Swap Topic →
-                </Link>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <p className="text-base text-[#4A533E] mb-8 leading-relaxed font-medium">
-              The stage is yours. Secure your subject before someone else claims the best ones.
-            </p>
-            <Link
-              href="/topics"
-              className="block w-full bg-[#8E9D7B] hover:bg-[#4A533E] text-white font-bold py-4 px-8 rounded-[1.5rem] transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 transform"
-            >
-              Select Your Topic
-            </Link>
-          </div>
-        )}
-
-        {/* --- NEW: THE STAKES WARNING --- */}
-        <div className="mt-8 p-5 bg-[#F5F3E9]/80 border border-[#C2CDB4] rounded-[1.5rem] text-left flex gap-4 items-start shadow-inner">
-          <span className="text-2xl mt-1">🔥</span>
-          <p className="text-[#4A533E] text-sm font-medium leading-relaxed">
-            <strong className="text-[#2D3325] block mb-1">The Stakes</strong>
-            Have your slides ready! Keep it interactive, controversial, and exciting—because your fellow presenters will be rating you live.
+          <p className="text-lg md:text-xl text-[#8E9D7B] max-w-md leading-relaxed mb-12">
+            No boring meetings. No corporate jargon. Just 15 minutes to prove you know what you're talking about.
           </p>
         </div>
 
+        {/* Feature Cards (Staggered Animation) */}
+        <div className="space-y-4 max-w-md">
+          <FeatureCard
+            icon="🎯"
+            title="Claim Your Topic"
+            desc="Lock in your subject before anyone else takes it."
+            delay="300ms"
+          />
+          <FeatureCard
+            icon="⏱️"
+            title="Take the Stage"
+            desc="Time and track all presentations on the Clock!"
+            delay="500ms"
+          />
+          <FeatureCard
+            icon="🔥"
+            title="Get Rated"
+            desc="The audience decides if you 'Cooked' or if you flopped."
+            delay="700ms"
+          />
+        </div>
+      </div>
+
+      {/* RIGHT SIDE: The Auth Portal */}
+      <div className="w-full md:w-[450px] lg:w-[500px] bg-[#2D3325] border-l border-[#4A533E] p-8 md:p-12 flex flex-col justify-center relative shadow-2xl z-10">
+
+        {session ? (
+          // IF LOGGED IN
+          <div className="text-center animate-fade-in">
+            <div className="w-20 h-20 bg-[#8E9D7B] text-[#1A1E16] rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-[0_0_30px_rgba(142,157,123,0.3)]">
+              👋
+            </div>
+            <h2 className="text-3xl font-black text-white mb-2">You're In.</h2>
+            <p className="text-[#C2CDB4] mb-8">Ready to lock in your topic?</p>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full py-4 bg-[#8E9D7B] hover:bg-[#C2CDB4] text-[#1A1E16] font-black rounded-xl transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(142,157,123,0.2)]"
+            >
+              ENTER DASHBOARD &rarr;
+            </button>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/';
+              }}
+              className="mt-6 text-xs text-[#8E9D7B] hover:text-white uppercase tracking-widest font-bold transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          // IF NOT LOGGED IN
+          <div className="animate-fade-in" style={{ animationDelay: '900ms' }}>
+            <h2 className="text-3xl font-black text-white mb-2">
+              {isSignUp ? 'Claim Your Spot' : 'Welcome Back'}
+            </h2>
+            <p className="text-[#8E9D7B] text-sm mb-8">
+              {isSignUp ? 'Create an account to join the roster.' : 'Sign in to access your dashboard.'}
+            </p>
+
+            <form onSubmit={handleAuth} className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-[#C2CDB4] uppercase tracking-widest mb-2">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[#1A1E16] border border-[#4A533E] text-white px-4 py-3 rounded-xl focus:outline-none focus:border-[#8E9D7B] transition-colors"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#C2CDB4] uppercase tracking-widest mb-2">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-[#1A1E16] border border-[#4A533E] text-white px-4 py-3 rounded-xl focus:outline-none focus:border-[#8E9D7B] transition-colors"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+
+              {error && <div className="text-red-400 text-sm font-bold bg-red-400/10 p-3 rounded-lg border border-red-400/20">{error}</div>}
+              {authMessage && <div className="text-[#8E9D7B] text-sm font-bold bg-[#8E9D7B]/10 p-3 rounded-lg border border-[#8E9D7B]/20">{authMessage}</div>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 mt-4 bg-[#8E9D7B] hover:bg-[#C2CDB4] text-[#1A1E16] font-black rounded-xl transition-all duration-300 disabled:opacity-50"
+              >
+                {loading ? 'Processing...' : (isSignUp ? 'SIGN UP' : 'LOG IN')}
+              </button>
+            </form>
+
+            <div className="mt-8 text-center border-t border-[#4A533E] pt-6">
+              <p className="text-[#8E9D7B] text-sm">
+                {isSignUp ? "Already have an account?" : "Don't have an account yet?"}
+              </p>
+              <button
+                onClick={() => {
+                  setIsSignUp(!isSignUp)
+                  setError(null)
+                  setAuthMessage(null)
+                }}
+                className="mt-2 text-white font-bold hover:text-[#C2CDB4] transition-colors uppercase tracking-wider text-sm"
+              >
+                {isSignUp ? 'Log in instead' : 'Create an account'}
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+// A reusable component for the little animated info cards on the left
+function FeatureCard({ icon, title, desc, delay }) {
+  return (
+    <div
+      className="flex items-start gap-4 p-4 rounded-2xl border border-[#4A533E] bg-[#2D3325]/50 backdrop-blur-sm animate-fade-in hover:border-[#8E9D7B] transition-colors duration-300"
+      style={{ animationDelay: delay }}
+    >
+      <div className="w-12 h-12 rounded-xl bg-[#1A1E16] border border-[#4A533E] flex items-center justify-center text-2xl shrink-0">
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-white font-bold text-lg">{title}</h3>
+        <p className="text-[#C2CDB4] text-sm mt-1">{desc}</p>
       </div>
     </div>
   )
