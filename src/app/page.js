@@ -79,7 +79,7 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-lg md:text-xl text-[#8E9D7B] max-w-md leading-relaxed mb-12">
-            No boring meetings. No corporate jargon. Just 15 minutes to prove you know what you're talking about.
+            No boring meetings. No corporate jargon. Just 15 minutes to prove you know what you are talking about.
           </p>
         </div>
 
@@ -115,7 +115,7 @@ export default function LandingPage() {
             <div className="w-20 h-20 bg-[#8E9D7B] text-[#1A1E16] rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-[0_0_30px_rgba(142,157,123,0.3)]">
               👋
             </div>
-            <h2 className="text-3xl font-black text-white mb-2">You're In.</h2>
+            <h2 className="text-3xl font-black text-white mb-2">You are In.</h2>
             <p className="text-[#C2CDB4] mb-8">Ready to lock in your topic?</p>
             <button
               onClick={() => router.push('/dashboard')}
