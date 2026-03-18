@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/utils/supabase'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 // CHANGE THIS: 10 for testing, 900 (15 mins) for the real event!
-const START_TIME = 10;
+const START_TIME = 900;
 
 export default function LiveViewPage() {
+    const router = useRouter()
     const [presenters, setPresenters] = useState([])
     const [activePresenter, setActivePresenter] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -54,8 +56,17 @@ export default function LiveViewPage() {
     // --- 2. INITIALIZATION ---
     useEffect(() => {
         const initData = async () => {
+            // 1. Check if the user is logged in
             const { data: { session } } = await supabase.auth.getSession()
-            const currentUser = session?.user || null
+
+            if (!session) {
+                // 2. If NO session, send them away!
+                router.push('/')
+                return
+            }
+
+            // 3. If they ARE logged in, proceed as normal
+            const currentUser = session.user
             setUser(currentUser)
 
             const { data } = await supabase
@@ -68,9 +79,10 @@ export default function LiveViewPage() {
                 if (data.length > 0) {
                     const firstTopic = data[0]
                     setActivePresenter(firstTopic)
-                    const { time, running } = restoreTimerState(firstTopic.id, currentUser?.id, firstTopic.claimed_by)
 
-                    if (currentUser?.id === firstTopic.claimed_by && channelRef.current) {
+                    // Only the owner of the FIRST topic syncs the timer initially
+                    const { time, running } = restoreTimerState(firstTopic.id, currentUser.id, firstTopic.claimed_by)
+                    if (currentUser.id === firstTopic.claimed_by && channelRef.current) {
                         channelRef.current.send({
                             type: 'broadcast',
                             event: 'sync',
