@@ -5,7 +5,7 @@ import { supabase } from '@/utils/supabase'
 import Link from 'next/link'
 
 // CHANGE THIS: 10 for testing, 900 (15 mins) for the real event!
-const START_TIME = 10;
+const START_TIME = 900;
 
 export default function LiveViewPage() {
     const [presenters, setPresenters] = useState([])
