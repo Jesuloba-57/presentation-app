@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import confetti from 'canvas-confetti'
 
 const START_TIME = 900;
+// 👑 CHANGE THIS TO YOUR ACTUAL LOGIN EMAIL
+const ADMIN_EMAIL = 'jesulobadavid@gmail.com';
 
 export default function LiveViewPage() {
     const router = useRouter()
@@ -19,12 +21,10 @@ export default function LiveViewPage() {
     const [timerRunning, setTimerRunning] = useState(false)
     const channelRef = useRef(null)
 
-    // --- NEW: Refs to stabilize the WebSocket connection ---
     const userRef = useRef(user)
     const presentersRef = useRef(presenters)
     const activePresenterRef = useRef(activePresenter)
 
-    // Keep the refs perfectly in sync with the state
     useEffect(() => { userRef.current = user }, [user])
     useEffect(() => { presentersRef.current = presenters }, [presenters])
     useEffect(() => { activePresenterRef.current = activePresenter }, [activePresenter])
@@ -33,6 +33,9 @@ export default function LiveViewPage() {
     const [hasRated, setHasRated] = useState(false)
     const [scores, setScores] = useState({ lockedIn: 0, cooked: 0, rewatch: 0 })
     const [submitting, setSubmitting] = useState(false)
+
+    // --- GOD MODE CHECK ---
+    const isHost = user?.email === ADMIN_EMAIL;
 
     const restoreTimerState = (topic, currentUserId) => {
         if (topic.has_presented) {
@@ -123,12 +126,10 @@ export default function LiveViewPage() {
         checkExistingRating()
     }, [activePresenter, user])
 
-    // --- FIX: Rock-solid WebSocket that never disconnects ---
     useEffect(() => {
         const channel = supabase.channel('live-room')
 
         channel.on('broadcast', { event: 'sync' }, ({ payload }) => {
-            // Use the Refs here instead of the raw state variables!
             if (userRef.current?.id !== payload.presenterId) {
                 setTimeLeft(payload.timeLeft)
                 setTimerRunning(payload.timerRunning)
@@ -144,7 +145,7 @@ export default function LiveViewPage() {
 
         channelRef.current = channel
         return () => supabase.removeChannel(channel)
-    }, []) // <-- The magic empty array. Opens once, stays open forever.
+    }, [])
 
     const broadcastState = (newTime, isRunning, topicId) => {
         if (channelRef.current) {
@@ -224,10 +225,37 @@ export default function LiveViewPage() {
         prevTimeRef.current = timeLeft
     }, [timeLeft, activePresenter])
 
+    // --- GOD MODE FUNCTIONS ---
+    const handleHostDelete = async (e, id) => {
+        e.stopPropagation();
+        if (!confirm("👑 HOST: Permanently delete this topic?")) return;
+        await supabase.from('topics').delete().eq('id', id);
+        setPresenters(prev => prev.filter(p => p.id !== id));
+        if (activePresenter?.id === id) setActivePresenter(null);
+    }
+
+    const handleHostUnlock = async () => {
+        if (!confirm("👑 HOST: Unlock this presentation?")) return;
+        await supabase.from('topics').update({ has_presented: false }).eq('id', activePresenter.id);
+        setActivePresenter(prev => ({ ...prev, has_presented: false }));
+        setTimerRunning(false);
+        setTimeLeft(START_TIME);
+        broadcastState(START_TIME, false, activePresenter.id);
+    }
+
+    const handleHostLock = async () => {
+        if (!confirm("👑 HOST: Force lock this presentation to 0:00?")) return;
+        await supabase.from('topics').update({ has_presented: true }).eq('id', activePresenter.id);
+        setActivePresenter(prev => ({ ...prev, has_presented: true }));
+        setTimerRunning(false);
+        setTimeLeft(0);
+        broadcastState(0, false, activePresenter.id);
+    }
+
     const handleSelectPresenter = (p) => {
         setActivePresenter(p)
         const { time, running } = restoreTimerState(p, user?.id)
-        if (user?.id === p.claimed_by) {
+        if (user?.id === p.claimed_by || isHost) {
             broadcastState(time, running, p.id)
         }
     }
@@ -287,6 +315,8 @@ export default function LiveViewPage() {
     }
 
     const isCurrentPresenter = activePresenter?.claimed_by === user?.id
+    const canControlTimer = isCurrentPresenter || isHost // 👑 Host universal remote
+
     const currentIndex = presenters.findIndex(p => p.id === activePresenter?.id)
     const nextPresenter = currentIndex >= 0 && currentIndex < presenters.length - 1
         ? presenters[currentIndex + 1]
@@ -327,10 +357,10 @@ export default function LiveViewPage() {
     return (
         <div className="flex flex-col md:flex-row h-screen bg-[#2D3325] overflow-hidden text-[#F5F3E9] font-sans">
 
-            <div className="w-full md:w-1/3 md:max-w-sm bg-[#1A1E16] border-b md:border-b-0 md:border-r border-[#4A533E] p-4 md:p-6 flex flex-col z-10 shrink-0 shadow-md md:shadow-none">
+            <div className="w-full md:w-1/3 md:max-w-sm bg-[#1A1E16] border-b md:border-b-0 md:border-r border-[#4A533E] p-4 md:p-6 flex flex-col z-10 shrink-0 shadow-md md:shadow-none relative">
                 <div className="flex justify-between items-center mb-3 md:mb-8">
                     <h2 className="text-sm md:text-2xl font-black tracking-widest uppercase text-[#C2CDB4]">
-                        The Roster
+                        The Roster {isHost && "👑"}
                     </h2>
                     <Link href="/" className="text-[10px] md:text-xs text-[#8E9D7B] hover:text-white transition-colors bg-[#2D3325] px-3 py-1.5 rounded-full">
                         Exit
@@ -343,7 +373,8 @@ export default function LiveViewPage() {
                     ) : (
                         sortedPresenters.map((p, index) => {
                             const isMyTopic = p.claimed_by === user?.id;
-                            const isLocked = timerRunning && activePresenter?.id !== p.id;
+                            // Host ignores the UI lock
+                            const isLocked = !isHost && timerRunning && activePresenter?.id !== p.id;
 
                             return (
                                 <button
@@ -352,14 +383,25 @@ export default function LiveViewPage() {
                                         if (isLocked) return;
                                         handleSelectPresenter(p)
                                     }}
-                                    className={`w-[80vw] sm:w-[280px] md:w-full shrink-0 snap-center text-left p-3 md:p-5 rounded-xl md:rounded-2xl border-2 transition-all duration-300 ${activePresenter?.id === p.id
+                                    className={`relative w-[80vw] sm:w-[280px] md:w-full shrink-0 snap-center text-left p-3 md:p-5 rounded-xl md:rounded-2xl border-2 transition-all duration-300 ${activePresenter?.id === p.id
                                             ? 'bg-[#8E9D7B] border-[#C2CDB4] shadow-lg transform md:scale-[1.02]'
                                             : isLocked
                                                 ? 'bg-[#1A1E16] border-[#4A533E]/30 opacity-40 cursor-not-allowed'
                                                 : 'bg-[#2D3325] border-transparent hover:border-[#4A533E] hover:bg-[#3A4230]'
                                         }`}
                                 >
-                                    <div className="flex justify-between items-center mb-1">
+                                    {/* 👑 HOST TRASH CAN */}
+                                    {isHost && (
+                                        <div
+                                            onClick={(e) => handleHostDelete(e, p.id)}
+                                            className="absolute top-2 right-2 md:top-4 md:right-4 w-6 h-6 md:w-8 md:h-8 flex items-center justify-center bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-full transition-colors z-20 cursor-pointer"
+                                            title="Force Delete Topic"
+                                        >
+                                            🗑️
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between items-center mb-1 pr-8">
                                         <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70">
                                             {isMyTopic ? (
                                                 <span className="text-white md:text-[#C2CDB4]">👋 Your Topic</span>
@@ -375,7 +417,7 @@ export default function LiveViewPage() {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="font-black text-sm md:text-lg truncate">{p.profiles?.display_name}</div>
+                                    <div className="font-black text-sm md:text-lg truncate pr-6">{p.profiles?.display_name}</div>
                                     <div className="text-[11px] md:text-sm truncate opacity-80 mt-0.5">{p.title}</div>
                                 </button>
                             )
@@ -385,10 +427,23 @@ export default function LiveViewPage() {
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-12 relative bg-gradient-to-br from-[#2D3325] to-[#1A1E16] overflow-y-auto">
+
+                {/* 👑 GOD MODE CONTROL PANEL */}
+                {isHost && activePresenter && (
+                    <div className="absolute top-4 right-4 md:top-8 md:right-8 bg-black/60 border border-red-500/50 p-2 md:p-3 rounded-xl flex items-center gap-2 backdrop-blur-md z-50 shadow-2xl animate-fade-in">
+                        <span className="text-red-500 text-[10px] md:text-xs font-black uppercase tracking-widest mr-1 md:mr-2">God Mode</span>
+                        {activePresenter.has_presented ? (
+                            <button onClick={handleHostUnlock} className="bg-orange-500/20 text-orange-400 hover:bg-orange-500/40 text-[10px] font-bold px-3 py-1.5 rounded uppercase transition-colors">Unlock Stage</button>
+                        ) : (
+                            <button onClick={handleHostLock} className="bg-red-500/20 text-red-400 hover:bg-red-500/40 text-[10px] font-bold px-3 py-1.5 rounded uppercase transition-colors">Force Lock</button>
+                        )}
+                    </div>
+                )}
+
                 {activePresenter ? (
                     <div className="w-full max-w-4xl flex flex-col items-center text-center animate-fade-in my-auto">
 
-                        <div className="inline-block bg-[#8E9D7B] text-[#1A1E16] font-black px-3 py-1 md:px-6 md:py-2 rounded-full text-[8px] md:text-sm uppercase tracking-[0.2em] mb-3 md:mb-8 shadow-lg">
+                        <div className="inline-block bg-[#8E9D7B] text-[#1A1E16] font-black px-3 py-1 md:px-6 md:py-2 rounded-full text-[8px] md:text-sm uppercase tracking-[0.2em] mb-3 md:mb-8 shadow-lg mt-12 md:mt-0">
                             {activePresenter.has_presented ? 'Presentation Concluded' : 'Currently Presenting'}
                         </div>
 
@@ -424,7 +479,8 @@ export default function LiveViewPage() {
                                         {formatTime(timeLeft)}
                                     </div>
 
-                                    {isCurrentPresenter && !activePresenter.has_presented && (
+                                    {/* CONTROLS (Presenter OR Host) */}
+                                    {canControlTimer && !activePresenter.has_presented && (
                                         <div className="mt-6 md:absolute md:-bottom-16 md:left-0 md:right-0 flex flex-row justify-center gap-3 md:gap-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                                             <button onClick={toggleTimer} className="bg-[#4A533E] hover:bg-[#C2CDB4] hover:text-[#1A1E16] text-white font-bold py-3 px-8 rounded-full transition-all text-sm md:text-base shadow-md">
                                                 {timerRunning ? 'PAUSE' : 'START'}
@@ -435,7 +491,7 @@ export default function LiveViewPage() {
                                         </div>
                                     )}
 
-                                    {isCurrentPresenter && activePresenter.has_presented && (
+                                    {canControlTimer && activePresenter.has_presented && (
                                         <div className="mt-4 md:absolute md:-bottom-16 left-0 right-0 flex justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                                             <span className="bg-red-500/10 text-red-500 font-bold py-2 px-6 rounded-full border border-red-500/30 uppercase tracking-widest text-xs">
                                                 LOCKED
