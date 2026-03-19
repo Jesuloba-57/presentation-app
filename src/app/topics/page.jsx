@@ -111,7 +111,7 @@ export default function TopicsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#F5F3E9] to-[#E2E6D8] p-6 pb-20 overflow-hidden">
+        <div className="min-h-screen bg-[#F5F3E9] text-[#2D3325] pt-28 md:pt-32 pb-12 px-4 md:px-6 font-sans">
 
             {/* Wrapper to control the entry animation */}
             <div className={`transform transition-all duration-1000 ease-out ${isMounted ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'

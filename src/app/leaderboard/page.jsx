@@ -89,7 +89,7 @@ export default function LeaderboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#1A1E16] text-[#F5F3E9] p-4 md:p-6 pt-24 pb-20 font-sans selection:bg-[#8E9D7B] selection:text-[#1A1E16]">
+        <div className="min-h-screen bg-[#1A1E16] text-[#F5F3E9] pt-28 md:pt-32 pb-12 px-4 md:px-6 font-sans">
             <div className="max-w-3xl mx-auto">
 
                 <div className="text-center mb-10 md:mb-16 animate-fade-in">

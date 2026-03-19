@@ -15,10 +15,10 @@ export default function DashboardPage() {
     const [myTopic, setMyTopic] = useState(null)
     const [loading, setLoading] = useState(true)
 
-    // Form States
-    const [topicTitle, setTopicTitle] = useState('')
+    // Form States (Only for Display Name now)
     const [displayName, setDisplayName] = useState('')
-    const [submitting, setSubmitting] = useState(false)
+    const [submittingName, setSubmittingName] = useState(false)
+    const [nameSaved, setNameSaved] = useState(false)
 
     // Countdown State
     const [countdown, setCountdown] = useState({ d: 0, h: 0, m: 0, s: 0 })
@@ -58,6 +58,7 @@ export default function DashboardPage() {
             const currentUser = session.user
             setUser(currentUser)
 
+            // Fetch Profile
             const { data: profileData } = await supabase
                 .from('profiles')
                 .select('*')
@@ -69,6 +70,7 @@ export default function DashboardPage() {
                 setDisplayName(profileData.display_name || '')
             }
 
+            // Fetch Claimed Topic
             const { data: topicData } = await supabase
                 .from('topics')
                 .select('*')
@@ -85,25 +87,24 @@ export default function DashboardPage() {
         fetchDashboardData()
     }, [])
 
-    // --- 3. Save Logic ---
-    const handleSaveProfileAndTopic = async (e) => {
+    // --- 3. Save Display Name Logic ---
+    const handleUpdateName = async (e) => {
         e.preventDefault()
-        setSubmitting(true)
+        if (!displayName.trim()) return
+
+        setSubmittingName(true)
+        setNameSaved(false)
 
         await supabase
             .from('profiles')
-            .upsert({ id: user.id, display_name: displayName })
+            .upsert({ id: user.id, display_name: displayName.trim() })
 
-        const { data } = await supabase
-            .from('topics')
-            .insert([{ title: topicTitle, claimed_by: user.id }])
-            .select()
-            .single()
+        setProfile({ ...profile, display_name: displayName.trim() })
+        setSubmittingName(false)
+        setNameSaved(true)
 
-        if (data) setMyTopic(data)
-
-        setProfile({ ...profile, display_name: displayName })
-        setSubmitting(false)
+        // Hide the "Saved!" text after 3 seconds
+        setTimeout(() => setNameSaved(false), 3000)
     }
 
     if (loading) {
@@ -114,12 +115,11 @@ export default function DashboardPage() {
         )
     }
 
-    // Format helper to always show two digits (e.g., "05" instead of "5")
     const formatTime = (time) => time.toString().padStart(2, '0')
     const isEventLive = countdown.d === 0 && countdown.h === 0 && countdown.m === 0 && countdown.s === 0
 
     return (
-        <div className="min-h-screen bg-[#1A1E16] text-[#F5F3E9] pt-24 pb-12 px-4 md:px-6 font-sans">
+        <div className="min-h-screen bg-[#1A1E16] text-[#F5F3E9] pt-28 md:pt-32 pb-12 px-4 md:px-6 font-sans">
             <div className="max-w-4xl mx-auto animate-fade-in">
 
                 {/* Header & The Countdown Banner */}
@@ -134,17 +134,12 @@ export default function DashboardPage() {
                     {/* THE COUNTDOWN WIDGET */}
                     <div className={`p-6 md:p-8 rounded-[2rem] border-2 shadow-2xl relative overflow-hidden transition-colors duration-500 ${isEventLive ? 'bg-gradient-to-br from-[#8E9D7B] to-[#4A533E] border-[#C2CDB4]' : 'bg-[#2D3325] border-[#4A533E]'}`}>
                         <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-
                         <div className="text-center relative z-10">
                             <h2 className={`text-xs md:text-sm font-bold uppercase tracking-[0.2em] mb-4 ${isEventLive ? 'text-[#1A1E16]' : 'text-[#C2CDB4]'}`}>
                                 {isEventLive ? 'THE EVENT IS LIVE' : 'TIME UNTIL SHOWTIME'}
                             </h2>
-
                             <div className="flex justify-center gap-4 md:gap-8">
-                                {/* Days (Only show if more than 0) */}
-                                {countdown.d > 0 && (
-                                    <TimeBlock value={formatTime(countdown.d)} label="Days" isLive={isEventLive} />
-                                )}
+                                {countdown.d > 0 && <TimeBlock value={formatTime(countdown.d)} label="Days" isLive={isEventLive} />}
                                 <TimeBlock value={formatTime(countdown.h)} label="Hours" isLive={isEventLive} />
                                 <span className={`text-3xl md:text-5xl font-black mt-2 ${isEventLive ? 'text-white' : 'text-[#8E9D7B]'}`}>:</span>
                                 <TimeBlock value={formatTime(countdown.m)} label="Mins" isLive={isEventLive} />
@@ -158,67 +153,63 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
 
                     {/* LEFT COLUMN: Setup Form / Status */}
-                    <div className="bg-[#2D3325] p-6 md:p-8 rounded-[2rem] border border-[#4A533E] shadow-xl relative overflow-hidden">
+                    <div className="bg-[#2D3325] p-6 md:p-8 rounded-[2rem] border border-[#4A533E] shadow-xl relative overflow-hidden flex flex-col">
                         <h2 className="text-xl md:text-2xl font-black text-white mb-6">Your Status</h2>
 
-                        {myTopic && profile?.display_name ? (
-                            // THEY ARE READY TO GO
-                            <div className="space-y-6">
-                                <div className="bg-[#1A1E16] p-5 md:p-6 rounded-2xl border border-[#8E9D7B]/30">
-                                    <div className="text-[10px] md:text-xs font-bold text-[#C2CDB4] uppercase tracking-widest mb-1">Display Name</div>
-                                    <div className="text-lg md:text-xl font-bold text-white mb-4">{profile.display_name}</div>
+                        <div className="space-y-6 flex-1">
 
-                                    <div className="text-[10px] md:text-xs font-bold text-[#C2CDB4] uppercase tracking-widest mb-1">Locked-In Topic</div>
-                                    <div className="text-lg md:text-xl font-bold text-[#8E9D7B]">"{myTopic.title}"</div>
-                                </div>
-
-                                <div className="flex items-center gap-3 text-xs md:text-sm font-bold text-[#C2CDB4] bg-[#8E9D7B]/10 p-4 rounded-xl border border-[#8E9D7B]/20">
-                                    <span>✅</span> Your topic is permanently locked in for tonight.
-                                </div>
-                            </div>
-                        ) : (
-                            // THEY NEED TO SETUP
-                            <form onSubmit={handleSaveProfileAndTopic} className="space-y-4 md:space-y-5">
-                                <div className="mb-4 text-xs text-[#8E9D7B] font-bold uppercase tracking-widest border-b border-[#4A533E] pb-2">
-                                    ⚠️ Note: Topics cannot be changed once submitted.
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] md:text-xs font-bold text-[#C2CDB4] uppercase tracking-widest mb-2">
+                            {/* DISPLAY NAME SECTION (Always visible so they can update their name) */}
+                            <form onSubmit={handleUpdateName} className="bg-[#1A1E16] p-5 rounded-2xl border border-[#4A533E]">
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-[10px] md:text-xs font-bold text-[#C2CDB4] uppercase tracking-widest">
                                         Your Name (For the Big Screen)
                                     </label>
+                                    {nameSaved && <span className="text-[#8E9D7B] text-[10px] font-bold uppercase tracking-widest animate-pulse">Saved!</span>}
+                                </div>
+                                <div className="flex gap-2">
                                     <input
                                         type="text"
                                         value={displayName}
                                         onChange={(e) => setDisplayName(e.target.value)}
-                                        className="w-full bg-[#1A1E16] border border-[#4A533E] text-white px-4 py-3 rounded-xl focus:outline-none focus:border-[#8E9D7B] transition-colors text-sm md:text-base"
+                                        className="flex-1 w-full bg-[#2D3325] border border-[#4A533E] text-white px-4 py-3 rounded-xl focus:outline-none focus:border-[#8E9D7B] transition-colors text-sm md:text-base"
                                         placeholder="e.g. David"
                                         required
                                     />
+                                    <button
+                                        type="submit"
+                                        disabled={submittingName}
+                                        className="bg-[#8E9D7B] hover:bg-[#C2CDB4] text-[#1A1E16] px-5 py-3 rounded-xl font-black transition-all duration-300 disabled:opacity-50 text-sm md:text-base"
+                                    >
+                                        {submittingName ? '...' : 'SAVE'}
+                                    </button>
                                 </div>
-
-                                <div>
-                                    <label className="block text-[10px] md:text-xs font-bold text-[#C2CDB4] uppercase tracking-widest mb-2">
-                                        What are you presenting on?
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={topicTitle}
-                                        onChange={(e) => setTopicTitle(e.target.value)}
-                                        className="w-full bg-[#1A1E16] border border-[#4A533E] text-white px-4 py-3 rounded-xl focus:outline-none focus:border-[#8E9D7B] transition-colors text-sm md:text-base"
-                                        placeholder="e.g. The Secret Nepo Baby Theory"
-                                        required
-                                    />
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    className="w-full py-4 bg-[#8E9D7B] hover:bg-[#C2CDB4] text-[#1A1E16] font-black rounded-xl transition-all duration-300 disabled:opacity-50 mt-4 text-sm md:text-base"
-                                >
-                                    {submitting ? 'Locking it in...' : 'LOCK IN TOPIC'}
-                                </button>
                             </form>
-                        )}
+
+                            {/* TOPIC STATUS SECTION */}
+                            {myTopic ? (
+                                // IF THEY HAVE A TOPIC
+                                <div className="bg-[#1A1E16] p-5 md:p-6 rounded-2xl border border-[#8E9D7B]/30 flex flex-col h-[calc(100%-110px)] justify-center">
+                                    <div className="text-[10px] md:text-xs font-bold text-[#C2CDB4] uppercase tracking-widest mb-1">Locked-In Topic</div>
+                                    <div className="text-lg md:text-xl font-bold text-[#8E9D7B] mb-4">"{myTopic.title}"</div>
+
+                                    <div className="flex items-center gap-3 text-xs md:text-sm font-bold text-[#C2CDB4] bg-[#8E9D7B]/10 p-4 rounded-xl border border-[#8E9D7B]/20">
+                                        <span>✅</span> Ready for the stage.
+                                    </div>
+                                </div>
+                            ) : (
+                                // IF THEY DON'T HAVE A TOPIC
+                                <div className="bg-[#1A1E16] p-5 md:p-6 rounded-2xl border border-dashed border-[#4A533E] text-center flex flex-col justify-center items-center h-[calc(100%-110px)]">
+                                    <div className="text-4xl mb-3">🎯</div>
+                                    <h3 className="text-white font-bold text-lg mb-1">No Topic Claimed</h3>
+                                    <p className="text-[#8E9D7B] text-xs md:text-sm mb-6">You need to lock in a topic before you can take the stage tonight.</p>
+
+                                    <Link href="/topics" className="w-full py-4 bg-[#8E9D7B] hover:bg-[#C2CDB4] text-[#1A1E16] font-black rounded-xl transition-all duration-300 transform hover:scale-[1.02]">
+                                        BROWSE TOPICS
+                                    </Link>
+                                </div>
+                            )}
+
+                        </div>
                     </div>
 
                     {/* RIGHT COLUMN: Event Hub */}
@@ -251,7 +242,6 @@ export default function DashboardPage() {
     )
 }
 
-// Helper component for the countdown numbers
 function TimeBlock({ value, label, isLive }) {
     return (
         <div className="flex flex-col items-center">
