@@ -286,13 +286,12 @@ export default function LiveViewPage() {
     )
 
     return (
-        // RESPONSIVE UPGRADE: Stack on mobile (flex-col), side-by-side on desktop (md:flex-row)
         <div className="flex flex-col md:flex-row h-screen bg-[#2D3325] overflow-hidden text-[#F5F3E9] font-sans">
 
-            {/* LEFT COLUMN (Top row on mobile): The Roster */}
-            <div className="w-full md:w-1/3 md:max-w-sm h-[35vh] md:h-full bg-[#1A1E16] border-b md:border-b-0 md:border-r border-[#4A533E] p-4 md:p-6 flex flex-col z-10 shrink-0">
-                <div className="flex justify-between items-center mb-4 md:mb-8">
-                    <h2 className="text-xl md:text-2xl font-black tracking-widest uppercase text-[#C2CDB4]">
+            {/* THE ROSTER: Now a horizontal swipeable row on mobile! */}
+            <div className="w-full md:w-1/3 md:max-w-sm bg-[#1A1E16] border-b md:border-b-0 md:border-r border-[#4A533E] p-4 md:p-6 flex flex-col z-10 shrink-0 shadow-md md:shadow-none">
+                <div className="flex justify-between items-center mb-3 md:mb-8">
+                    <h2 className="text-sm md:text-2xl font-black tracking-widest uppercase text-[#C2CDB4]">
                         The Roster
                     </h2>
                     <Link href="/" className="text-[10px] md:text-xs text-[#8E9D7B] hover:text-white transition-colors bg-[#2D3325] px-3 py-1.5 rounded-full">
@@ -300,9 +299,10 @@ export default function LiveViewPage() {
                     </Link>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pr-2 space-y-3 md:space-y-4 custom-scrollbar">
+                {/* The Swipeable Container */}
+                <div className="flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 md:pr-2 gap-3 md:gap-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {sortedPresenters.length === 0 ? (
-                        <p className="text-[#8E9D7B] text-center mt-6 md:mt-10 text-sm">No topics claimed yet.</p>
+                        <p className="text-[#8E9D7B] text-center mt-4 md:mt-10 text-xs md:text-sm w-full">No topics claimed yet.</p>
                     ) : (
                         sortedPresenters.map((p, index) => {
                             const isMyTopic = p.claimed_by === user?.id;
@@ -311,7 +311,8 @@ export default function LiveViewPage() {
                                 <button
                                     key={p.id}
                                     onClick={() => handleSelectPresenter(p)}
-                                    className={`w-full text-left p-4 md:p-5 rounded-xl md:rounded-2xl border-2 transition-all duration-300 ${activePresenter?.id === p.id
+                                    // w-[75vw] on mobile ensures the next card peeks in from the edge to show it's swipeable
+                                    className={`w-[80vw] sm:w-[280px] md:w-full shrink-0 snap-center text-left p-3 md:p-5 rounded-xl md:rounded-2xl border-2 transition-all duration-300 ${activePresenter?.id === p.id
                                             ? 'bg-[#8E9D7B] border-[#C2CDB4] shadow-lg transform md:scale-[1.02]'
                                             : 'bg-[#2D3325] border-transparent hover:border-[#4A533E] hover:bg-[#3A4230]'
                                         }`}
@@ -319,23 +320,21 @@ export default function LiveViewPage() {
                                     <div className="flex justify-between items-center mb-1">
                                         <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70">
                                             {isMyTopic ? (
-                                                <span className="text-white md:text-[#C2CDB4] drop-shadow-md md:drop-shadow-none">👋 Your Topic</span>
+                                                <span className="text-white md:text-[#C2CDB4]">👋 Your Topic</span>
                                             ) : (
                                                 `Presenter ${index + 1}`
                                             )}
                                         </div>
 
                                         {p.has_presented && (
-                                            <div className="bg-[#8E9D7B] text-[#1A1E16] font-black text-[8px] md:text-[10px] px-2 md:px-3 py-1 md:py-1.5 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1 md:gap-1.5 relative animate-fade-in transition-all duration-300">
-                                                <span className="text-[10px] md:text-xs shadow-[0_0_10px_rgba(255,255,255,0.7)]">⭐</span>
-                                                <span>Presented!</span>
-                                                {/* The restored glowing pulse effect */}
-                                                <span className="absolute inset-0 rounded-full animate-pulse-slow bg-white/10 opacity-70"></span>
+                                            <div className="bg-[#8E9D7B] text-[#1A1E16] font-black text-[8px] md:text-[10px] px-2 py-1 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1 relative">
+                                                <span>⭐</span>
+                                                <span>Done</span>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="font-black text-base md:text-lg truncate">{p.profiles?.display_name}</div>
-                                    <div className="text-xs md:text-sm truncate opacity-80 mt-0.5 md:mt-1">{p.title}</div>
+                                    <div className="font-black text-sm md:text-lg truncate">{p.profiles?.display_name}</div>
+                                    <div className="text-[11px] md:text-sm truncate opacity-80 mt-0.5">{p.title}</div>
                                 </button>
                             )
                         })
@@ -343,62 +342,55 @@ export default function LiveViewPage() {
                 </div>
             </div>
 
-            {/* RIGHT COLUMN (Bottom section on mobile): The Main Stage */}
-            <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 relative bg-gradient-to-br from-[#2D3325] to-[#1A1E16] overflow-y-auto">
+            {/* RIGHT COLUMN: The Main Stage */}
+            <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-12 relative bg-gradient-to-br from-[#2D3325] to-[#1A1E16] overflow-y-auto">
                 {activePresenter ? (
-                    <div className="w-full max-w-4xl flex flex-col items-center text-center animate-fade-in my-auto pb-12 md:pb-0">
+                    <div className="w-full max-w-4xl flex flex-col items-center text-center animate-fade-in my-auto">
 
-                        <div className="inline-block bg-[#8E9D7B] text-[#1A1E16] font-black px-4 md:px-6 py-1.5 md:py-2 rounded-full text-[10px] md:text-sm uppercase tracking-[0.2em] mb-4 md:mb-8 shadow-lg">
+                        <div className="inline-block bg-[#8E9D7B] text-[#1A1E16] font-black px-3 py-1 md:px-6 md:py-2 rounded-full text-[8px] md:text-sm uppercase tracking-[0.2em] mb-3 md:mb-8 shadow-lg">
                             {activePresenter.has_presented ? 'Presentation Concluded' : 'Currently Presenting'}
                         </div>
 
-                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-black mb-2 md:mb-6 leading-tight text-white drop-shadow-md px-2">
+                        <h1 className="text-3xl sm:text-5xl md:text-7xl font-black mb-1 md:mb-6 leading-tight text-white drop-shadow-md px-2 line-clamp-2">
                             {activePresenter.profiles?.display_name}
                         </h1>
 
-                        <h2 className="text-lg sm:text-xl md:text-3xl font-medium text-[#C2CDB4] mb-8 md:mb-12 max-w-3xl leading-relaxed px-4">
+                        <h2 className="text-sm sm:text-xl md:text-3xl font-medium text-[#C2CDB4] mb-6 md:mb-12 max-w-3xl leading-relaxed px-4 line-clamp-3">
                             "{activePresenter.title}"
                         </h2>
 
                         {isRating ? (
-                            <div className="bg-[#2D3325] p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border border-[#4A533E] shadow-2xl w-full max-w-md animate-fade-in mx-4">
+                            <div className="bg-[#2D3325] p-5 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border border-[#4A533E] shadow-2xl w-full max-w-md animate-fade-in mx-4">
                                 <RatingRow label="🎯 I was locked in" valueKey="lockedIn" />
                                 <RatingRow label="🔥 You cooked" valueKey="cooked" />
                                 <RatingRow label="🍿 Would I rewatch this?" valueKey="rewatch" />
 
                                 <div className="flex gap-3 md:gap-4 mt-6 md:mt-8">
-                                    <button
-                                        onClick={() => setIsRating(false)}
-                                        className="flex-1 py-3 md:py-4 rounded-xl font-bold text-[#C2CDB4] hover:bg-[#3A4230] transition-colors text-sm md:text-base"
-                                    >
+                                    <button onClick={() => setIsRating(false)} className="flex-1 py-3 md:py-4 rounded-xl font-bold text-[#C2CDB4] hover:bg-[#3A4230] transition-colors text-sm md:text-base">
                                         Cancel
                                     </button>
-                                    <button
-                                        onClick={submitRating}
-                                        disabled={submitting}
-                                        className="flex-1 py-3 md:py-4 bg-[#8E9D7B] hover:bg-[#C2CDB4] text-[#1A1E16] font-black rounded-xl transition-colors disabled:opacity-50 text-sm md:text-base"
-                                    >
+                                    <button onClick={submitRating} disabled={submitting} className="flex-1 py-3 md:py-4 bg-[#8E9D7B] hover:bg-[#C2CDB4] text-[#1A1E16] font-black rounded-xl transition-colors disabled:opacity-50 text-sm md:text-base">
                                         {submitting ? 'Sending...' : 'Lock It In'}
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <>
-                                {/* MASSIVE TIMER - Scales down on mobile */}
-                                <div className="relative group w-full flex justify-center mt-4 md:mt-0">
-                                    <div className={`text-[6rem] sm:text-[8rem] md:text-[12rem] font-mono font-bold leading-none tracking-tighter transition-colors duration-500 ${timeLeft === 0 ? 'text-red-500 animate-pulse' :
+                                {/* MASSIVE TIMER */}
+                                <div className="relative group w-full flex flex-col items-center">
+                                    <div className={`text-[5.5rem] sm:text-[8rem] md:text-[12rem] font-mono font-bold leading-none tracking-tighter transition-colors duration-500 ${timeLeft === 0 ? 'text-red-500 animate-pulse' :
                                             timeLeft <= 60 ? 'text-orange-400' : 'text-white'
                                         }`}>
                                         {formatTime(timeLeft)}
                                     </div>
 
-                                    {/* CONTROLS: Always visible on mobile for presenter, hidden behind hover on desktop */}
+                                    {/* CONTROLS - Moved out of absolute positioning on mobile so they are easy to tap */}
                                     {isCurrentPresenter && !activePresenter.has_presented && (
-                                        <div className="absolute -bottom-20 md:-bottom-16 left-0 right-0 flex flex-row justify-center gap-3 md:gap-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                                            <button onClick={toggleTimer} className="bg-[#4A533E] hover:bg-[#C2CDB4] hover:text-[#1A1E16] text-white font-bold py-2 md:py-3 px-6 md:px-8 rounded-full transition-all text-sm md:text-base shadow-md">
+                                        <div className="mt-6 md:absolute md:-bottom-16 md:left-0 md:right-0 flex flex-row justify-center gap-3 md:gap-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+                                            <button onClick={toggleTimer} className="bg-[#4A533E] hover:bg-[#C2CDB4] hover:text-[#1A1E16] text-white font-bold py-3 px-8 rounded-full transition-all text-sm md:text-base shadow-md">
                                                 {timerRunning ? 'PAUSE' : 'START'}
                                             </button>
-                                            <button onClick={resetTimer} className="bg-[#1A1E16] md:bg-transparent border-2 border-[#4A533E] text-[#C2CDB4] hover:bg-[#4A533E] font-bold py-2 md:py-3 px-6 md:px-8 rounded-full transition-all text-sm md:text-base shadow-md md:shadow-none">
+                                            <button onClick={resetTimer} className="bg-transparent border-2 border-[#4A533E] text-[#C2CDB4] hover:bg-[#4A533E] hover:text-white font-bold py-3 px-8 rounded-full transition-all text-sm md:text-base">
                                                 RESET
                                             </button>
                                         </div>
@@ -406,8 +398,8 @@ export default function LiveViewPage() {
 
                                     {/* LOCKED BADGE */}
                                     {isCurrentPresenter && activePresenter.has_presented && (
-                                        <div className="absolute -bottom-16 left-0 right-0 flex justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                                            <span className="bg-red-500/10 text-red-500 font-bold py-2 md:py-3 px-6 md:px-8 rounded-full border border-red-500/30 uppercase tracking-widest text-xs md:text-sm">
+                                        <div className="mt-4 md:absolute md:-bottom-16 left-0 right-0 flex justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+                                            <span className="bg-red-500/10 text-red-500 font-bold py-2 px-6 rounded-full border border-red-500/30 uppercase tracking-widest text-xs">
                                                 LOCKED
                                             </span>
                                         </div>
@@ -416,11 +408,11 @@ export default function LiveViewPage() {
 
                                 {/* THE CONSTANT RATE BUTTON (For Watchers Only) */}
                                 {!isCurrentPresenter && !hasRated && timeLeft < START_TIME && (
-                                    <div className="mt-12 md:mt-16 animate-fade-in px-4">
+                                    <div className="mt-8 md:mt-16 animate-fade-in px-4 w-full md:w-auto">
                                         <button
                                             onClick={() => setIsRating(true)}
-                                            className={`font-black text-lg md:text-2xl py-4 md:py-6 px-8 md:px-12 rounded-full transform transition-all duration-300 w-full md:w-auto ${timeLeft === 0
-                                                    ? 'bg-red-500 hover:bg-red-400 text-white shadow-[0_0_30px_rgba(239,68,68,0.5)] scale-105 md:scale-110 animate-bounce'
+                                            className={`font-black text-sm md:text-2xl py-4 md:py-6 px-6 md:px-12 rounded-full transform transition-all duration-300 w-full ${timeLeft === 0
+                                                    ? 'bg-red-500 hover:bg-red-400 text-white shadow-[0_0_30px_rgba(239,68,68,0.5)] scale-105 animate-bounce'
                                                     : 'bg-[#8E9D7B] hover:bg-[#C2CDB4] text-[#1A1E16] shadow-[0_0_20px_rgba(142,157,123,0.3)] hover:scale-105'
                                                 }`}
                                         >
@@ -428,18 +420,11 @@ export default function LiveViewPage() {
                                         </button>
                                     </div>
                                 )}
-
-                                {hasRated && (
-                                    <div className="mt-12 md:mt-16 text-[#8E9D7B] font-bold text-sm md:text-xl uppercase tracking-widest animate-fade-in bg-[#1A1E16]/50 px-6 py-3 rounded-full">
-                                        ✅ Rating Locked In
-                                    </div>
-                                )}
                             </>
                         )}
-
                     </div>
                 ) : (
-                    <div className="text-[#8E9D7B] text-lg md:text-2xl font-medium animate-pulse text-center px-6">
+                    <div className="text-[#8E9D7B] text-sm md:text-2xl font-medium animate-pulse text-center px-6">
                         Waiting for a presenter to take the stage...
                     </div>
                 )}
