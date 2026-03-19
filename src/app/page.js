@@ -60,7 +60,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1A1E16] text-[#F5F3E9] font-sans selection:bg-[#8E9D7B] selection:text-[#1A1E16] overflow-hidden flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#1A1E16] text-[#F5F3E9] pt-28 md:pt-32 pb-12 px-4 md:px-6 font-sans">
 
       {/* LEFT SIDE: The Pitch & Animations */}
       <div className="flex-1 p-8 md:p-16 flex flex-col justify-center relative">
